@@ -3,7 +3,7 @@ import argparse
 import ConfigParser
 import re
 import codecs
-import nltk
+import nltk 
 import os
 nltk.download('punkt')
 
@@ -83,8 +83,12 @@ def sentence_splitting(input_file, output_file, classification_token_index, id_i
                     parragraph = data[paragraph_index]
                     sentences = tokenizer.tokenize(parragraph)
                     for item in sentences:
+                        #fix this part is conveniente to add an a training or classification flag.
                         if(classification_token_index!=-1):
-                            sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\t' + 'ABSTRACT' + '\t' + paragraph_score + '\n')
+                            if(paragraph_score_index!=-1):
+                                sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\t' + 'ABSTRACT' + '\t' + data[paragraph_score_index] + '\n')
+                            else:
+                                sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')    
                         else:
                             sentence_file.write(id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')
                         sentence_order=sentence_order + 1
