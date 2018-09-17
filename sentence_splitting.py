@@ -20,53 +20,56 @@ if __name__ == '__main__':
     sentence_splitting.Main(parameters)
 
 def Main(parameters):
+    is_training = parameters['is_training']
     input_file=parameters['input_file']
     output_file= parameters['output_file']
     classification_token_index=int(parameters['classification_token_index'])
     id_index=int(parameters['id_index'])
     paragraph_index=int(parameters['paragraph_index'])
-    paragraph_score_index=int(parameters['paragraph_score_index'])
-    if os.path.isdir(input_file):
-        sentence_splitting_directory(input_file, output_file, classification_token_index, id_index, paragraph_index, paragraph_score_index)
-    else:
-        sentence_splitting(input_file, output_file, classification_token_index, id_index, paragraph_index, paragraph_score_index)
+    if is_training == 'false' and os.path.isdir(input_file):
+        #if is not a training is classification and a directory has to be processed
+        sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index)
+    elif is_training == 'true' and os.path.isfile(input_file):
+        # Is training and the input has to be a unique file
+        sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index)
     
 def ReadParameters(args):
     if(args.p!=None):
         Config = ConfigParser.ConfigParser()
         Config.read(args.p)
+        parameters['is_training']=Config.get('MAIN', 'is_training')
         parameters['input_file']=Config.get('MAIN', 'input_file')
         parameters['output_file']=Config.get('MAIN', 'output_file')
         parameters['paragraph_index']=Config.get('MAIN', 'paragraph_index')
         parameters['id_index']=Config.get('MAIN', 'id_index')
         parameters['classification_token_index']=Config.get('MAIN', 'classification_token_index')
-        parameters['paragraph_score_index']=Config.get('MAIN', 'paragraph_score_index')
     else:
         logging.error("Please send the correct parameters config.properties --help ")
         sys.exit(1)
     return parameters   
 
-def sentence_splitting_directory(input_file, output_file, classification_token_index, id_index, paragraph_index, paragraph_score_index):
+def sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index):
+    logging.info("Sentence Spliting for directory  : " + input_file + ".  output file : "  + output_file + " -- mode training " + str(is_training))
     if not os.path.exists(output_file):
         os.makedirs(output_file)
     ids_list=[]
-    if(os.path.isfile(output_file+"/list_files_processed.txt")):
-        with open(output_file+"/list_files_processed.txt",'r') as ids:
+    if(os.path.isfile(output_file+"/list_files_processed.dat")):
+        with open(output_file+"/list_files_processed.dat",'r') as ids:
             for line in ids:
                 ids_list.append(line.replace("\n",""))
         ids.close()
     if os.path.exists(input_file):
         onlyfiles_toprocess = [os.path.join(input_file, f) for f in os.listdir(input_file) if (os.path.isfile(os.path.join(input_file, f)) & f.endswith('.xml.txt') & (os.path.basename(f) not in ids_list))]
-    with open(output_file+"/list_files_processed.txt",'a') as list_files_standardized_sentences:    
+    with open(output_file+"/list_files_processed.dat",'a') as list_files_standardized_sentences:    
         for file in onlyfiles_toprocess:    
-            output_file_result = output_file + "/" + os.path.basename(file) + "_sentences.txt"
-            sentence_splitting(file, output_file_result, classification_token_index, id_index,paragraph_index, paragraph_score_index)
+            output_file_result = output_file + "/" + os.path.basename(file)
+            sentence_splitting(is_training, file, output_file_result, classification_token_index, id_index,paragraph_index)
             list_files_standardized_sentences.write(os.path.basename(file)+"\n")
             list_files_standardized_sentences.flush()
     list_files_standardized_sentences.close() 
-     
-def sentence_splitting(input_file, output_file, classification_token_index, id_index, paragraph_index, paragraph_score_index):
-    logging.info("Sentence Spliting for intup file  : " + input_file + ".  output file : "  + output_file)
+    logging.info("End Sentence Spliting") 
+def sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index):
+    logging.info("Sentence Spliting for intup file  : " + input_file + ".  output file : "  + output_file + " mode training " + str(is_training))
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     total_articles_errors = 0
     with codecs.open(output_file,'w',encoding='utf8') as sentence_file:
@@ -76,21 +79,27 @@ def sentence_splitting(input_file, output_file, classification_token_index, id_i
                     data = re.split(r'\t+', line) 
                     if(classification_token_index!=-1):
                         classification_token = data[classification_token_index]
-                    if(paragraph_score_index!=-1):
-                        paragraph_score = data[paragraph_score_index]    
                     id = data[id_index]
                     sentence_order = 1
                     parragraph = data[paragraph_index]
                     sentences = tokenizer.tokenize(parragraph)
                     for item in sentences:
                         #fix this part is conveniente to add an a training or classification flag.
+                        if is_training == 'false' :
+                            sentence_file.write(id + "_"+str(sentence_order) + '\t' + 'ABSTRACT' + '\t' + item.lower() +  '\n') #ABSTRACT HARDCODE
+                        elif is_training == 'true' :
+                            #The training add the classification token
+                            sentence_file.write(id + "_"+str(sentence_order)+ '\t' + classification_token + '\t' + 'ABSTRACT' + '\t' + item.lower() +  '\n') #ABSTRACT HARDCODE
+                        
+                        '''
                         if(classification_token_index!=-1):
                             if(paragraph_score_index!=-1):
                                 sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\t' + 'ABSTRACT' + '\t' + data[paragraph_score_index] + '\n')
                             else:
                                 sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')    
                         else:
-                            sentence_file.write(id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')
+                            sentence_file.write(id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')'''
+                            
                         sentence_order=sentence_order + 1
                     sentence_file.flush()
                 except Exception as inst:
