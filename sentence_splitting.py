@@ -25,10 +25,12 @@ def Main(parameters):
     output_file= parameters['output_file']
     classification_token_index=int(parameters['classification_token_index'])
     id_index=int(parameters['id_index'])
+    section_index=int(parameters['section_index'])
+    sourceId_index=int(parameters['sourceId_index'])
     paragraph_index=int(parameters['paragraph_index'])
     if is_training == 'false' and os.path.isdir(input_file):
         #if is not a training is classification and a directory has to be processed
-        sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index)
+        sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, sourceId_index, section_index, paragraph_index)
     elif is_training == 'true' and os.path.isfile(input_file):
         # Is training and the input has to be a unique file
         sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index)
@@ -42,13 +44,15 @@ def ReadParameters(args):
         parameters['output_file']=Config.get('MAIN', 'output_file')
         parameters['paragraph_index']=Config.get('MAIN', 'paragraph_index')
         parameters['id_index']=Config.get('MAIN', 'id_index')
+        parameters['section_index']=Config.get('MAIN', 'section_index')
+        parameters['sourceId_index']=Config.get('MAIN', 'sourceId_index')
         parameters['classification_token_index']=Config.get('MAIN', 'classification_token_index')
     else:
         logging.error("Please send the correct parameters config.properties --help ")
         sys.exit(1)
     return parameters   
 
-def sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index):
+def sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, sourceId_index, section_index, paragraph_index):
     logging.info("Sentence Spliting for directory  : " + input_file + ".  output file : "  + output_file + " -- mode training " + str(is_training))
     if not os.path.exists(output_file):
         os.makedirs(output_file)
@@ -63,12 +67,12 @@ def sentence_splitting_directory(is_training, input_file, output_file, classific
     with open(output_file+"/list_files_processed.dat",'a') as list_files_standardized_sentences:    
         for file in onlyfiles_toprocess:    
             output_file_result = output_file + "/" + os.path.basename(file)
-            sentence_splitting(is_training, file, output_file_result, classification_token_index, id_index,paragraph_index)
+            sentence_splitting(is_training, file, output_file_result, classification_token_index, id_index, sourceId_index, section_index, paragraph_index)
             list_files_standardized_sentences.write(os.path.basename(file)+"\n")
             list_files_standardized_sentences.flush()
     list_files_standardized_sentences.close() 
     logging.info("End Sentence Spliting") 
-def sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index):
+def sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, sourceId_index, section_index, paragraph_index):
     logging.info("Sentence Spliting for intup file  : " + input_file + ".  output file : "  + output_file + " mode training " + str(is_training))
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     total_articles_errors = 0
@@ -76,36 +80,34 @@ def sentence_splitting(is_training, input_file, output_file, classification_toke
         with codecs.open(input_file,'r',encoding='utf8') as file:
             for line in file:
                 try:
-                    data = re.split(r'\t+', line) 
-                    if(classification_token_index!=-1):
-                        classification_token = data[classification_token_index]
-                    id = data[id_index]
-                    sentence_order = 1
-                    parragraph = data[paragraph_index]
-                    sentences = tokenizer.tokenize(parragraph)
-                    for item in sentences:
-                        #fix this part is conveniente to add an a training or classification flag.
-                        if is_training == 'false' :
-                            sentence_file.write(id + "_"+str(sentence_order) + '\t' + 'ABSTRACT' + '\t' + item.lower() +  '\n') #ABSTRACT HARDCODE
-                        elif is_training == 'true' :
-                            #The training add the classification token
-                            sentence_file.write(id + "_"+str(sentence_order)+ '\t' + classification_token + '\t' + 'ABSTRACT' + '\t' + item.lower() +  '\n') #ABSTRACT HARDCODE
-                        
-                        '''
+                    data = re.split(r'\t+', line)
+                    if(len(data)==5): 
                         if(classification_token_index!=-1):
-                            if(paragraph_score_index!=-1):
-                                sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\t' + 'ABSTRACT' + '\t' + data[paragraph_score_index] + '\n')
-                            else:
-                                sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')    
-                        else:
-                            sentence_file.write(id + "_"+str(sentence_order) + '\t' + item.lower() + '\n')'''
-                            
-                        sentence_order=sentence_order + 1
-                    sentence_file.flush()
+                            classification_token = data[classification_token_index]
+                        id = data[id_index]
+                        #print id
+                        sourceId = data[sourceId_index]
+                        section = data[section_index]
+                        sentence_order = 1
+                        parragraph = data[paragraph_index]
+                        sentences = tokenizer.tokenize(parragraph)
+                        for item in sentences:
+                            if is_training == 'false' :
+                                sentence_file.write(id + "_"+str(sentence_order)  + '\t' + sourceId  + '\t' + section + '\t' + item +  '\n') 
+                            elif is_training == 'true' :
+                                #The training add the classification token
+                                sentence_file.write(id + "_"+str(sentence_order)+ '\t' + classification_token + '\t' + item +  '\n') 
+                            sentence_order=sentence_order + 1
+                        sentence_file.flush()
+                    else:
+                        logging.error("The article with id : " + id + " could not be processed. Five columns has to be present separated in tabs  " )
+                        logging.debug( "Full Line :  " + line)
+                        logging.debug( "File :  " + input_file)
                 except Exception as inst:
                     total_articles_errors = total_articles_errors + 1
                     logging.error("The article with id : " + id + " could not be processed. Cause:  " +  str(inst))
                     logging.debug( "Full Line :  " + line)
+                    logging.debug( "File :  " + input_file)
                     logging.error("The cause probably: contained an invalid character ")
         file.close()       
         logging.info("Total articles with character invalid: "  +  str(total_articles_errors))
