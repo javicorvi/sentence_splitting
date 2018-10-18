@@ -5,7 +5,7 @@ import re
 import codecs
 import nltk 
 import os
-nltk.download('punkt')
+
 
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -20,6 +20,7 @@ if __name__ == '__main__':
     sentence_splitting.Main(parameters)
 
 def Main(parameters):
+    nltk.download('punkt')
     is_training = parameters['is_training']
     input_file=parameters['input_file']
     output_file= parameters['output_file']
@@ -33,7 +34,7 @@ def Main(parameters):
         sentence_splitting_directory(is_training, input_file, output_file, classification_token_index, id_index, sourceId_index, section_index, paragraph_index)
     elif is_training == 'true' and os.path.isfile(input_file):
         # Is training and the input has to be a unique file
-        sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, paragraph_index)
+        sentence_splitting(is_training, input_file, output_file, classification_token_index, id_index, sourceId_index, section_index, paragraph_index)
     
 def ReadParameters(args):
     if(args.p!=None):
@@ -81,18 +82,18 @@ def sentence_splitting(is_training, input_file, output_file, classification_toke
             for line in file:
                 try:
                     data = re.split(r'\t+', line)
-                    if(len(data)==5): 
+                    if(len(data)>=4): 
                         if(classification_token_index!=-1):
                             classification_token = data[classification_token_index]
                         id = data[id_index]
                         #print id
-                        sourceId = data[sourceId_index]
-                        section = data[section_index]
                         sentence_order = 1
                         parragraph = data[paragraph_index]
                         sentences = tokenizer.tokenize(parragraph)
                         for item in sentences:
                             if is_training == 'false' :
+                                sourceId = data[sourceId_index]
+                                section = data[section_index]
                                 sentence_file.write(id + "_"+str(sentence_order)  + '\t' + sourceId  + '\t' + section + '\t' + item +  '\n') 
                             elif is_training == 'true' :
                                 #The training add the classification token
