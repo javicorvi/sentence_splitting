@@ -97,7 +97,7 @@ def sentence_splitting(is_training, input_file, output_file, classification_toke
                                 sentence_file.write(id + "_"+str(sentence_order)  + '\t' + sourceId  + '\t' + section + '\t' + item +  '\n') 
                             elif is_training == 'true' :
                                 #The training add the classification token
-                                sentence_file.write(id + "_"+str(sentence_order)+ '\t' + classification_token + '\t' + item +  '\n') 
+                                sentence_file.write(classification_token + '\t' + id + "_"+str(sentence_order)+ '\t' + item +  '\n') 
                             sentence_order=sentence_order + 1
                         sentence_file.flush()
                     else:
